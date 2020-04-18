@@ -1,0 +1,6 @@
+[submodule "arqmath-data-preprocessing"]
+	path = input_data
+	url = https://gitlab.fi.muni.cz/xnovot32/arqmath-data-preprocessing.git
+[submodule "input_data"]
+	path = input_data
+	url = https://gitlab.fi.muni.cz/xnovot32/arqmath-data-preprocessing.git
