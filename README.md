@@ -24,8 +24,8 @@ To set up our system, execute the following commands:
 
 ```sh
 git submodule update --init
-pip install -r requirements.txt
 pip install -r input_data/requirements.txt
+pip install -r requirements.txt
 ```
 
 Then, you can either:

@@ -1,1 +1,4 @@
-git+https://gitlab.fi.muni.cz/xstefan3/arqmath-eval@21507985df083075d3ce0fc64264a1cda86e7845
+annoy~=1.16.3
+git+https://gitlab.fi.muni.cz/xstefan3/arqmath-eval.git@0.0.8
+git+https://github.com/Witiko/gensim.git@deprecate_positive_definite
+tqdm~=4.45.0
