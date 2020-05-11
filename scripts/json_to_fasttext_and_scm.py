@@ -5,42 +5,27 @@ import json
 import logging
 from multiprocessing import Pool
 
-from arqmath_eval import get_topics, get_judged_documents, get_ndcg, get_random_normalized_ndcg
+from arqmath_eval import get_topics, get_judged_documents, get_ndcg
 from gensim.corpora import Dictionary
 from gensim.models import FastText, TfidfModel, WordEmbeddingSimilarityIndex
+from gensim.models.phrases import Phrases, Phraser
 from gensim.similarities import SparseTermSimilarityMatrix
 from gensim.similarities.index import AnnoyIndexer
 import numpy as np
 from tqdm import tqdm
 
 from .common import ArXMLivParagraphIterator, read_json_file
-from .configuration import FASTTEXT_PARAMETERS, TERMSIM_MATRIX_PARAMETERS, TERMSIM_INDEX_PARAMETERS, ARXMLIV_NOPROBLEM_FILENAMES, ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, POOL_NUM_WORKERS, POOL_CHUNKSIZE
+from .configuration import POOL_NUM_WORKERS, POOL_CHUNKSIZE, get_configurations
 
 
 TASK='task1-votes'
 TOPN=1000
 
 
-def get_random_results(task=TASK, subset='train'):
-    from random import random
-    results = {}
-    topic_ids = sorted(get_topics(task=task, subset=subset))
-    if subset == 'train':  # subsample the train subset
-        topic_ids = topic_ids[:len(topic_ids) // 10]
-    for topic_id in topic_ids:
-        results[topic_id] = {}
-        document_ids = get_judged_documents(task=task, subset=subset, topic=topic_id)
-        for document_id in document_ids:
-            results[topic_id][document_id] = random()
-    return results
-
-
 def get_results(corpus, task=TASK, subset='train'):
     results = {}
     description = 'Getting results for task {} subset {} topics'.format(task, subset)
     topic_ids = sorted(get_topics(task=task, subset=subset))
-    if subset == 'train':  # subsample the train subset
-        topic_ids = topic_ids[:len(topic_ids) // 10]
     topics = (corpus[topic_id] for topic_id in topic_ids)
     document_ids_list = [
         list(get_judged_documents(task=task, subset=subset, topic=topic_id))
@@ -75,14 +60,29 @@ def get_results_worker(args):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.WARNING)
-    for json_filename, fasttext_filename, scm_filename, dictionary_filename, tfidf_filename, corpus_filename, train_result_filename, validation_result_filename, discard_math in tqdm(ARXMLIV_NOPROBLEM_FILENAMES, desc='Training FastText models'):
+    for configuration in get_configurations():
+
+        json_filename = configuration['json_filename']
+        json_num_paragraphs = configuration['json_num_paragraphs']
+        dataset_parameters = configuration['dataset_parameters']
+        fasttext_parameters = configuration['fasttext_parameters']
+        fasttext_filename = configuration['fasttext_filename']
+        termsim_matrix_parameters = configuration['termsim_matrix_parameters']
+        termsim_index_parameters = configuration['termsim_index_parameters']
+        scm_filename = configuration['scm_filename']
+        dictionary_filename = configuration['dictionary_filename']
+        tfidf_filename = configuration['tfidf_filename']
+        phraser_filename = configuration['phraser_filename']
+        corpus_filename = configuration['corpus_filename']
+        corpus_num_documents = configuration['corpus_num_documents']
+        validation_result_filename = configuration['validation_result_filename']
+        discard_math = configuration['discard_math']
+
         try:
-            # with open(train_result_filename, 'rt') as f:
-            #     pass
             with open(validation_result_filename, 'rt') as f:
                 pass
         except IOError:
-            paragraphs = ArXMLivParagraphIterator([json_filename], [ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS], discard_math)
+            paragraphs = ArXMLivParagraphIterator([json_filename], [json_num_paragraphs], discard_math)
             try:
                 dictionary = Dictionary.load(dictionary_filename)
             except IOError:
@@ -99,11 +99,11 @@ if __name__ == '__main__':
                 try:
                     model = FastText.load(fasttext_filename)
                 except IOError:
-                    model = FastText(paragraphs, **FASTTEXT_PARAMETERS)
+                    model = FastText(paragraphs, **fasttext_parameters)
                     model.save(fasttext_filename)
                 annoy_indexer = AnnoyIndexer(model, num_trees=1)
-                termsim_index = WordEmbeddingSimilarityIndex(model.wv, kwargs={'indexer': annoy_indexer}, **TERMSIM_INDEX_PARAMETERS)
-                similarity_matrix = SparseTermSimilarityMatrix(termsim_index, dictionary, tfidf=tfidf, **TERMSIM_MATRIX_PARAMETERS)
+                termsim_index = WordEmbeddingSimilarityIndex(model.wv, kwargs={'indexer': annoy_indexer}, **termsim_index_parameters)
+                similarity_matrix = SparseTermSimilarityMatrix(termsim_index, dictionary, tfidf=tfidf, **termsim_matrix_parameters)
                 similarity_matrix.save(scm_filename)
                 del model, termsim_index
             relevant_ids = (
@@ -112,16 +112,10 @@ if __name__ == '__main__':
             )
             corpus = {
                 document_id: tfidf[dictionary.doc2bow(document)]
-                for document_id, document in read_json_file(corpus_filename, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, discard_math)
+                for document_id, document in read_json_file(corpus_filename, corpus_num_documents, discard_math)
                 if document_id in relevant_ids
             }
             del relevant_ids
-            # with open(train_result_filename, 'wt') as f:
-            #     train_results = get_results(corpus, subset='train')
-            #     ndcg = get_ndcg(train_results, task=TASK, subset='train', topn=TOPN)
-            #     line = json.dumps({'ndcg': ndcg})
-            #     print(line, file=f)
-            #     del train_results
             with open(validation_result_filename, 'wt') as f:
                 validation_results = get_results(corpus, subset='validation')
                 for topic_id, documents in validation_results.items():
