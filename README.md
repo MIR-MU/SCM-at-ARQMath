@@ -15,7 +15,7 @@ The system build on the following other repositories:
 
  [arqmath]: https://www.cs.rit.edu/~dprl/ARQMath/
  [arqmath-data-preprocessing]: https://gitlab.fi.muni.cz/xnovot32/arqmath-data-preprocessing
- [arqmath-eval]: https://gitlab.fi.muni.cz/xstefan3/arqmath-eval
+ [arqmath-eval]: https://gitlab.fi.muni.cz/xstefan3/arqmath-eval/-/tree/master/task1-votes/xnovot32
  [pv173-talk]: https://nlp.fi.muni.cz/trac/research/chrome/site/seminar2020/scm-at-arqmath.mp4
 
 ## Usage
