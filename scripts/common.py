@@ -6,15 +6,35 @@ import json
 from multiprocessing import Pool
 import re
 
+from gensim.models.doc2vec import TaggedDocument
 from tqdm import tqdm
 
-from .configuration import POOL_CHUNKSIZE, POOL_NUM_WORKERS
+from .configuration import POOL_CHUNKSIZE, POOL_NUM_WORKERS, TOPN
 
 
 JSON_LINE_REGEX = re.compile(r'"(?P<document_name>[^"]*)": (?P<json_document>.*),')
 
 
-def read_json_file(filename, total_number_of_documents, discard_math=False, concat_math=False, phraser=None):
+def get_judged_results(topic_corpus, document_corpus, topic_judgements, worker):
+    results = {}
+    topic_ids = sorted(topic_corpus.keys())
+    topics = (topic_corpus[topic_id] for topic_id in topic_ids)
+    document_ids_list = [sorted(topic_judgements[topic_id]) for topic_id in topic_ids]
+    documents_list = (
+        [document_corpus[document_id] for document_id in document_ids]
+        for document_ids in document_ids_list
+    )
+    topics_and_documents = zip(topic_ids, topics, document_ids_list, documents_list)
+    topics_and_documents = tqdm(topics_and_documents, desc='Getting judged results', total=len(topic_ids))
+    with Pool(POOL_NUM_WORKERS) as pool:
+        ranked_topics_and_documents = pool.imap(worker, topics_and_documents, POOL_CHUNKSIZE)
+        for topic_id, document_ids, similarities in ranked_topics_and_documents:
+            documents = zip(document_ids, (float(similarity) for similarity in similarities))
+            top_documents = sorted(documents, key=lambda x: x[1], reverse=True)[:TOPN]
+            yield (topic_id, top_documents)
+
+
+def read_json_file(filename, total_number_of_documents, discard_math=False, concat_math=False, phraser=None, **kwargs):
     number_of_documents = 0
     with gzip.open(filename, 'rt') as f:
         with Pool(POOL_NUM_WORKERS) as pool:
@@ -98,7 +118,7 @@ def read_json_file_worker(args):
 
 
 class ArXMLivParagraphIterator():
-    def __init__(self, filenames, numbers_of_paragraphs, discard_math=False, concat_math=False, phraser=None):
+    def __init__(self, filenames, numbers_of_paragraphs, discard_math=False, concat_math=False, phraser=None, tagged_documents=False):
         self.filenames = list(reversed(filenames))
         self.remaining_filenames = list(self.filenames)
         self.numbers_of_paragraphs = list(reversed(numbers_of_paragraphs))
@@ -107,6 +127,7 @@ class ArXMLivParagraphIterator():
         self.discard_math = discard_math
         self.concat_math = concat_math
         self.phraser = phraser
+        self.tagged_documents = tagged_documents
         self.iterable = None
 
     def __iter__(self):
@@ -116,6 +137,7 @@ class ArXMLivParagraphIterator():
             discard_math=self.discard_math,
             concat_math=self.concat_math,
             phraser=self.phraser,
+            tagged_documents=self.tagged_documents,
         )
         return self
 
@@ -136,7 +158,10 @@ class ArXMLivParagraphIterator():
         paragraph = None
         while paragraph is None:
             try:
-                _, paragraph = next(self.iterable)
+                paragraph_name, paragraph = next(self.iterable)
             except StopIteration:
                 self.next_file()
-        return paragraph
+        if self.tagged_documents:
+            return TaggedDocument(words=paragraph, tags=[paragraph_name])
+        else:
+            return paragraph

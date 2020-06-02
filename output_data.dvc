@@ -21,9 +21,9 @@ deps:
   path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_infix.json.gz
 outs:
 - persist: false
-  md5: b3c1e60f02edd86e32c7680196b52a3f.dir
+  md5: a5782f77e839e7dc07305eb4c3241aab.dir
   cache: true
   path: output_data
   metric: false
-md5: ddedc0eda63442e3acddd7ace6176601
+md5: 6ad783c64d6c88eefbe153d8aae38821
 cmd: python -m scripts.json_to_fasttext_and_scm

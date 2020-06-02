@@ -4,41 +4,40 @@
 import csv
 import logging
 
-from gensim.corpora import Dictionary
-from gensim.models import FastText, TfidfModel, WordEmbeddingSimilarityIndex
+from gensim.models import Doc2Vec
 from gensim.models.phrases import Phrases, Phraser
-from gensim.similarities import SparseTermSimilarityMatrix
-from gensim.similarities.index import AnnoyIndexer
 import numpy as np
-from tqdm import tqdm
+from sklearn.metrics.pairwise import cosine_similarity
 
-from .common import ArXMLivParagraphIterator, read_json_file, get_judged_results
-from .configuration import POOL_NUM_WORKERS, POOL_CHUNKSIZE, CSV_PARAMETERS, get_fasttext_configurations
+from .common import ArXMLivParagraphIterator, read_json_file, get_judged_results, TASK, SUBSET
+from .configuration import POOL_NUM_WORKERS, POOL_CHUNKSIZE, CSV_PARAMETERS, get_doc2vec_configurations
 
 
 def get_judged_results_worker(args):
+    global model
     topic_id, topic, document_ids, documents = args
-    with np.errstate(divide='ignore', invalid='ignore'):
-        similarities = np.ravel(similarity_matrix.inner_product(topic, documents, normalized=True))
-        return topic_id, document_ids, similarities
+    topic = np.array([
+        model.infer_vector(topic)
+    ])
+    documents = np.array([
+        model.infer_vector(document)
+        for document in documents
+    ])
+    similarities = np.ravel(cosine_similarity(topic, documents))
+    return topic_id, document_ids, similarities
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.WARNING)
-    for configuration in get_fasttext_configurations():
+    for configuration in get_doc2vec_configurations():
 
         json_filenames = configuration['json_filenames']
         json_nums_paragraphs = configuration['json_nums_paragraphs']
         judged_results = configuration['judged_results']
         topic_judgements = configuration['topic_judgements']
         dataset_parameters = configuration['dataset_parameters']
-        fasttext_parameters = configuration['fasttext_parameters']
-        fasttext_filename = configuration['fasttext_filename']
-        termsim_matrix_parameters = configuration['termsim_matrix_parameters']
-        termsim_index_parameters = configuration['termsim_index_parameters']
-        scm_filename = configuration['scm_filename']
-        dictionary_filename = configuration['dictionary_filename']
-        tfidf_filename = configuration['tfidf_filename']
+        doc2vec_parameters = configuration['doc2vec_parameters']
+        doc2vec_filename = configuration['doc2vec_filename']
         phraser_filename = configuration['phraser_filename']
         topic_ids = configuration['topic_ids']
         topic_corpus_filename = configuration['topic_corpus_filename']
@@ -48,7 +47,7 @@ if __name__ == '__main__':
         document_corpus_num_documents = configuration['document_corpus_num_documents']
         validation_result_filename = configuration['validation_result_filename']
 
-        min_count = fasttext_parameters['min_count']
+        min_count = doc2vec_parameters['min_count']
         phrases_parameters = {
             'min_count': min_count,
             'delimiter': b' ',
@@ -57,14 +56,11 @@ if __name__ == '__main__':
 
         discard_math = configuration['discard_math']
         concat_math = False
-        reader_args = [json_filenames, json_nums_paragraphs]
+        reader_args = [json_filenames, [json_nums_paragraphs]]
         reader_kwargs = {
             'discard_math': discard_math,
             'concat_math': concat_math,
-        }
-
-        tfidf_parameters = {
-            'smartirs': 'dtn',
+            'tagged_documents': True,
         }
 
         try:
@@ -93,47 +89,26 @@ if __name__ == '__main__':
                 paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
 
             try:
-                dictionary = Dictionary.load(dictionary_filename)
+                model = Doc2Vec.load(doc2vec_filename, mmap='r')
             except IOError:
-                dictionary = Dictionary(paragraphs)
-                dictionary.save(dictionary_filename)
-
-            try:
-                tfidf = TfidfModel.load(tfidf_filename)
-            except IOError:
-                tfidf = TfidfModel(dictionary=dictionary, **tfidf_parameters)
-                tfidf.save(tfidf_filename)
-            termsim_matrix_parameters['tfidf'] = tfidf
-
-            try:
-                similarity_matrix = SparseTermSimilarityMatrix.load(scm_filename)
-            except IOError:
-                try:
-                    model = FastText.load(fasttext_filename, mmap='r')
-                except IOError:
-                    model = FastText(paragraphs, **fasttext_parameters)
-                    model.save(fasttext_filename)
-                annoy_indexer = AnnoyIndexer(model, num_trees=1)
-                termsim_index_parameters = {**termsim_index_parameters, **{'kwargs': {'indexer': annoy_indexer}}}
-                termsim_index = WordEmbeddingSimilarityIndex(model.wv, **termsim_index_parameters)
-                similarity_matrix = SparseTermSimilarityMatrix(termsim_index, dictionary, **termsim_matrix_parameters)
-                similarity_matrix.save(scm_filename)
-                del model, termsim_index
+                model = Doc2Vec(paragraphs, **doc2vec_parameters)
+                model.save(doc2vec_filename)
+            model.delete_temporary_training_data(keep_doctags_vectors=False, keep_inference=True)
 
             topic_corpus = dict()
             document_corpus = dict()
             for topic_id, topic in read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs):
                 if topic_id in topic_ids:
-                    topic_corpus[topic_id] = tfidf[dictionary.doc2bow(topic)]
+                    topic_corpus[topic_id] = topic
                 if topic_corpus_filename == document_corpus_filename:
                     document_id = topic_id
                     document = topic
                     if document_id in document_ids:
-                        document_corpus[document_id] = tfidf[dictionary.doc2bow(document)]
+                        document_corpus[document_id] = document
             if topic_corpus_filename != document_corpus_filename:
                 for document_id, document in read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs):
                     if document_id in document_ids:
-                        document_corpus[document_id] = tfidf[dictionary.doc2bow(document)]
+                        document_corpus[document_id] = document
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
@@ -146,7 +121,7 @@ if __name__ == '__main__':
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
-                            row = (topic_id, document_id, rank + 1, similarity, 'Run_SCM_0')
+                            row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_0')
                         csv_writer.writerow(row)
 
-            del dictionary, tfidf, similarity_matrix, corpus
+            del model, corpus
