@@ -1,9 +1,10 @@
 # -*- coding:utf-8 -*-
 
 import gzip
-from itertools import repeat
+from itertools import chain, repeat
 import json
 from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 import re
 
 from gensim.models.doc2vec import TaggedDocument
@@ -15,23 +16,111 @@ from .configuration import POOL_CHUNKSIZE, POOL_NUM_WORKERS, TOPN
 JSON_LINE_REGEX = re.compile(r'"(?P<document_name>[^"]*)": (?P<json_document>.*),')
 
 
-def get_judged_results(topic_corpus, document_corpus, topic_judgements, worker):
-    results = {}
+def get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker=None):
     topic_ids = sorted(topic_corpus.keys())
-    topics = (topic_corpus[topic_id] for topic_id in topic_ids)
-    document_ids_list = [sorted(topic_judgements[topic_id]) for topic_id in topic_ids]
-    documents_list = (
-        [document_corpus[document_id] for document_id in document_ids]
-        for document_ids in document_ids_list
-    )
-    topics_and_documents = zip(topic_ids, topics, document_ids_list, documents_list)
-    topics_and_documents = tqdm(topics_and_documents, desc='Getting judged results', total=len(topic_ids))
+    topics = [topic_corpus[topic_id] for topic_id in topic_ids]
+    if topic_judgements is None:
+        document_ids = sorted(document_corpus.keys())
+        documents = [document_corpus[document_id] for document_id in document_ids]
+        document_ids_list = repeat(document_ids)
+        documents_list = repeat(documents)
+    else:
+        document_ids_list = (sorted(topic_judgements[topic_id]) for topic_id in topic_ids)
+        documents_list = (
+            [document_corpus[document_id] for document_id in document_ids]
+            for document_ids in document_ids_list
+        )
+
+    tqdm_kwargs = {
+        'desc': 'Getting judged results',
+        'total': len(topic_ids),
+    }
+
+    if topic_judgements is not None or get_results_MN_worker is None:
+        topics_and_documents = zip(topic_ids, topics, document_ids_list, documents_list)
+        topics_and_documents = tqdm(topics_and_documents, **tqdm_kwargs)
+    else:
+        topics_and_documents = (topic_ids, topics, document_ids, documents)
+
     with Pool(POOL_NUM_WORKERS) as pool:
-        ranked_topics_and_documents = pool.imap(worker, topics_and_documents, POOL_CHUNKSIZE)
+        if topic_judgements is None:
+            if get_results_MN_worker is None:
+                ranked_topics_and_documents = map(get_results_1N_worker, topics_and_documents)
+            else:
+                ranked_topics_and_documents = tqdm(get_results_MN_worker(topics_and_documents), **tqdm_kwargs)
+        else:
+            ranked_topics_and_documents = pool.imap(get_results_1N_worker, topics_and_documents, POOL_CHUNKSIZE)
         for topic_id, document_ids, similarities in ranked_topics_and_documents:
-            documents = zip(document_ids, (float(similarity) for similarity in similarities))
-            top_documents = sorted(documents, key=lambda x: x[1], reverse=True)[:TOPN]
-            yield (topic_id, top_documents)
+            documents_and_similarities = zip(document_ids, similarities)
+            top_documents_and_similarities = get_topn(documents_and_similarities)
+            yield (topic_id, top_documents_and_similarities)
+
+
+def get_topn(documents_and_similarities):
+    documents = (
+        (document, float(similarity))
+        for document, similarity
+        in documents_and_similarities
+    )
+    top_documents_and_similarities = sorted(documents, key=lambda x: x[1], reverse=True)[:TOPN]
+    return top_documents_and_similarities
+
+
+def read_corpora(configuration, reader_kwargs):
+    topic_corpus_filename = configuration['topic_corpus_filename']
+    topic_corpus_num_documents = configuration['topic_corpus_num_documents']
+    topic_ids = configuration['topic_ids']
+    topic_transformer = configuration['topic_transformer']
+
+    document_corpus_filename = configuration['document_corpus_filename']
+    document_corpus_num_documents = configuration['document_corpus_num_documents']
+    document_ids = configuration['document_ids']
+    document_transformer = configuration['document_transformer']
+
+    parallelize_transformers = configuration['parallelize_transformers']
+
+    topic_corpus = dict()
+    document_corpus = dict()
+
+    with ProcessPoolExecutor(POOL_NUM_WORKERS) as executor:
+
+        if parallelize_transformers:
+            def transform_document(document): return executor.submit(document_transformer, document)
+            def transform_topic(topic): return executor.submit(topic_transformer, topic)
+        else:
+            transform_document = document_transformer
+            transform_topic = topic_transformer
+
+        for topic_id, topic in read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs):
+            if topic_id in topic_ids:
+                topic_corpus[topic_id] = transform_topic(topic)
+            if topic_corpus_filename == document_corpus_filename:
+                document_id = topic_id
+                document = topic
+                if document_id in document_ids:
+                    document_corpus[document_id] = transform_document(document)
+
+        assert len(topic_ids) == len(topic_corpus)
+
+        if topic_corpus_filename != document_corpus_filename:
+            for document_id, document in read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs):
+                if document_id in document_ids:
+                    document_corpus[document_id] = transform_document(document)
+
+        assert len(document_ids) == len(document_corpus)
+
+        if parallelize_transformers:
+            for corpus, (key, future) in tqdm(
+                        chain(
+                            zip(repeat(topic_corpus), topic_corpus.items()),
+                            zip(repeat(document_corpus), document_corpus.items()),
+                        ),
+                        desc='Waiting for topic and document transformers to finish',
+                        total=len(topic_corpus) + len(document_corpus),
+                    ):
+                corpus[key] = future.result()
+
+    return (topic_corpus, document_corpus)
 
 
 def read_json_file(filename, total_number_of_documents, discard_math=False, concat_math=False, phraser=None, **kwargs):

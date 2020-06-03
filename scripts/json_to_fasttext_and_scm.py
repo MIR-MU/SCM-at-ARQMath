@@ -12,15 +12,8 @@ from gensim.similarities.index import AnnoyIndexer
 import numpy as np
 from tqdm import tqdm
 
-from .common import ArXMLivParagraphIterator, read_json_file, get_judged_results
-from .configuration import POOL_NUM_WORKERS, POOL_CHUNKSIZE, CSV_PARAMETERS, get_fasttext_configurations
-
-
-def get_judged_results_worker(args):
-    topic_id, topic, document_ids, documents = args
-    with np.errstate(divide='ignore', invalid='ignore'):
-        similarities = np.ravel(similarity_matrix.inner_product(topic, documents, normalized=True))
-        return topic_id, document_ids, similarities
+from .common import ArXMLivParagraphIterator, read_corpora, get_results
+from .configuration import CSV_PARAMETERS, get_fasttext_configurations
 
 
 if __name__ == '__main__':
@@ -120,33 +113,47 @@ if __name__ == '__main__':
                 similarity_matrix.save(scm_filename)
                 del model, termsim_index
 
-            topic_corpus = dict()
-            document_corpus = dict()
-            for topic_id, topic in read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs):
-                if topic_id in topic_ids:
-                    topic_corpus[topic_id] = tfidf[dictionary.doc2bow(topic)]
-                if topic_corpus_filename == document_corpus_filename:
-                    document_id = topic_id
-                    document = topic
-                    if document_id in document_ids:
-                        document_corpus[document_id] = tfidf[dictionary.doc2bow(document)]
-            if topic_corpus_filename != document_corpus_filename:
-                for document_id, document in read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs):
-                    if document_id in document_ids:
-                        document_corpus[document_id] = tfidf[dictionary.doc2bow(document)]
+            def topic_and_document_transformer(topic_or_document):
+                return tfidf[dictionary.doc2bow(topic_or_document)]
+            
+            topic_corpus, document_corpus = read_corpora({
+                'topic_corpus_filename': topic_corpus_filename,
+                'topic_corpus_num_documents': topic_corpus_num_documents,
+                'topic_ids': topic_ids,
+                'topic_transformer': topic_and_document_transformer,
+                'document_corpus_filename': document_corpus_filename,
+                'document_corpus_num_documents': document_corpus_num_documents,
+                'document_ids': document_ids,
+                'document_transformer': topic_and_document_transformer,
+                'parallelize_transformers': False,
+            }, reader_kwargs)
+
+            def get_results_1N_worker(args):
+                topic_id, topic, document_ids, documents = args
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    similarities = np.ravel(similarity_matrix.inner_product(topic, documents, normalized=True))
+                    assert len(document_ids) == similarities.size
+                    return (topic_id, document_ids, similarities)
+
+            def get_results_MN_worker(args):
+                topic_ids, topics, document_ids, documents = args
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    similarities_list = similarity_matrix.inner_product(topics, documents, normalized=True)
+                    assert (len(topic_ids), len(document_ids)) == similarities_list.shape
+                    for topic_index, topic_id in enumerate(topic_ids):
+                        similarities = np.ravel(similarities_list[topic_index].todense())
+                        assert len(document_ids) == similarities.size
+                        yield (topic_id, document_ids, similarities)
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
-                if judged_results:
-                    results = get_judged_results(topic_corpus, document_corpus, topic_judgements, get_judged_results_worker)
-                else:
-                    assert False  # FIXME
-                for topic_id, top_documents in results:
-                    for rank, (document_id, similarity) in enumerate(top_documents):
+                results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker)
+                for topic_id, top_documents_and_similarities in results:
+                    for rank, (document_id, similarity) in enumerate(top_documents_and_similarities):
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
                             row = (topic_id, document_id, rank + 1, similarity, 'Run_SCM_0')
                         csv_writer.writerow(row)
 
-            del dictionary, tfidf, similarity_matrix, corpus
+            del dictionary, tfidf, similarity_matrix, topic_corpus, document_corpus

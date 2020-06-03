@@ -8,23 +8,10 @@ from gensim.models import Doc2Vec
 from gensim.models.phrases import Phrases, Phraser
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+from tqdm import tqdm
 
-from .common import ArXMLivParagraphIterator, read_json_file, get_judged_results, TASK, SUBSET
-from .configuration import POOL_NUM_WORKERS, POOL_CHUNKSIZE, CSV_PARAMETERS, get_doc2vec_configurations
-
-
-def get_judged_results_worker(args):
-    global model
-    topic_id, topic, document_ids, documents = args
-    topic = np.array([
-        model.infer_vector(topic)
-    ])
-    documents = np.array([
-        model.infer_vector(document)
-        for document in documents
-    ])
-    similarities = np.ravel(cosine_similarity(topic, documents))
-    return topic_id, document_ids, similarities
+from .common import ArXMLivParagraphIterator, read_corpora, get_results
+from .configuration import CSV_PARAMETERS, get_doc2vec_configurations
 
 
 if __name__ == '__main__':
@@ -95,33 +82,49 @@ if __name__ == '__main__':
                 model.save(doc2vec_filename)
             model.delete_temporary_training_data(keep_doctags_vectors=False, keep_inference=True)
 
-            topic_corpus = dict()
-            document_corpus = dict()
-            for topic_id, topic in read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs):
-                if topic_id in topic_ids:
-                    topic_corpus[topic_id] = topic
-                if topic_corpus_filename == document_corpus_filename:
-                    document_id = topic_id
-                    document = topic
-                    if document_id in document_ids:
-                        document_corpus[document_id] = document
-            if topic_corpus_filename != document_corpus_filename:
-                for document_id, document in read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs):
-                    if document_id in document_ids:
-                        document_corpus[document_id] = document
+            def topic_and_document_transformer(topic_or_document):
+                return model.infer_vector(topic_or_document)
+            
+            topic_corpus, document_corpus = read_corpora({
+                'topic_corpus_filename': topic_corpus_filename,
+                'topic_corpus_num_documents': topic_corpus_num_documents,
+                'topic_ids': topic_ids,
+                'topic_transformer': topic_and_document_transformer,
+                'document_corpus_filename': document_corpus_filename,
+                'document_corpus_num_documents': document_corpus_num_documents,
+                'document_ids': document_ids,
+                'document_transformer': topic_and_document_transformer,
+                'parallelize_transformers': True,
+            }, reader_kwargs)
+
+            def get_results_1N_worker(args):
+                topic_id, topic, document_ids, documents = args
+                topic = np.array([topic])
+                documents = np.array(documents)
+                similarities = np.ravel(cosine_similarity(topic, documents))
+                assert len(document_ids) == similarities.size
+                return (topic_id, document_ids, similarities)
+
+            def get_results_MN_worker(args):
+                topic_ids, topics, document_ids, documents = args
+                topics = np.array(topics)
+                documents = np.array(documents)
+                similarities_list = cosine_similarity(topics, documents)
+                assert (len(topic_ids), len(document_ids)) == similarities_list.shape
+                for topic_index, topic_id in enumerate(topic_ids):
+                    similarities = similarities_list[topic_index]
+                    assert len(document_ids) == similarities.size
+                    yield (topic_id, document_ids, similarities)
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
-                if judged_results:
-                    results = get_judged_results(topic_corpus, document_corpus, topic_judgements, get_judged_results_worker)
-                else:
-                    assert False  # FIXME
-                for topic_id, top_documents in results:
-                    for rank, (document_id, similarity) in enumerate(top_documents):
+                results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker)
+                for topic_id, top_documents_and_similarities in results:
+                    for rank, (document_id, similarity) in enumerate(top_documents_and_similarities):
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
                             row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_0')
                         csv_writer.writerow(row)
 
-            del model, corpus
+            del model, topic_corpus, document_corpus

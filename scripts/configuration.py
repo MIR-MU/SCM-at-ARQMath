@@ -5,7 +5,7 @@ from itertools import repeat, chain
 from multiprocessing import cpu_count
 
 from arqmath_eval import get_topics, get_judged_documents
-from input_data.scripts.configuration import ARXMLIV_NOPROBLEM_JSON_OPT_FILENAME, ARXMLIV_NOPROBLEM_JSON_SLT_FILENAME, ARXMLIV_NOPROBLEM_JSON_PREFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_INFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_LATEX_FILENAME, ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS, POOL_CHUNKSIZE, POOL_NUM_WORKERS, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, ARQMATH_COLLECTION_POSTS_OPT_FILENAME, ARQMATH_COLLECTION_POSTS_SLT_FILENAME, ARQMATH_COLLECTION_POSTS_PREFIX_FILENAME, ARQMATH_COLLECTION_POSTS_INFIX_FILENAME, ARQMATH_COLLECTION_POSTS_LATEX_FILENAME, CSV_PARAMETERS, ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS, ARXMLIV_WARNING1_JSON_OPT_FILENAME, ARXMLIV_WARNING1_JSON_SLT_FILENAME, ARXMLIV_WARNING1_JSON_PREFIX_FILENAME, ARXMLIV_WARNING1_JSON_INFIX_FILENAME, ARXMLIV_WARNING1_JSON_LATEX_FILENAME
+from input_data.scripts.configuration import ARXMLIV_NOPROBLEM_JSON_OPT_FILENAME, ARXMLIV_NOPROBLEM_JSON_SLT_FILENAME, ARXMLIV_NOPROBLEM_JSON_PREFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_INFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_LATEX_FILENAME, ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS, POOL_CHUNKSIZE, POOL_NUM_WORKERS, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, ARQMATH_COLLECTION_POSTS_OPT_FILENAME, ARQMATH_COLLECTION_POSTS_SLT_FILENAME, ARQMATH_COLLECTION_POSTS_PREFIX_FILENAME, ARQMATH_COLLECTION_POSTS_INFIX_FILENAME, ARQMATH_COLLECTION_POSTS_LATEX_FILENAME, CSV_PARAMETERS, ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS, ARXMLIV_WARNING1_JSON_OPT_FILENAME, ARXMLIV_WARNING1_JSON_SLT_FILENAME, ARXMLIV_WARNING1_JSON_PREFIX_FILENAME, ARXMLIV_WARNING1_JSON_INFIX_FILENAME, ARXMLIV_WARNING1_JSON_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_OPT_FILENAME, ARQMATH_TASK1_TEST_POSTS_SLT_FILENAME, ARQMATH_TASK1_TEST_POSTS_PREFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_INFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_NUM_DOCUMENTS
 
 from tqdm import tqdm
 
@@ -85,6 +85,14 @@ ARQMATH_COLLECTION_POSTS_FILENAMES = {
     'latex': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_COLLECTION_POSTS_LATEX_FILENAME),
 }
 
+ARQMATH_TASK1_TEST_POSTS_FILENAMES = {
+    'opt': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_TASK1_TEST_POSTS_OPT_FILENAME),
+    'slt': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_TASK1_TEST_POSTS_SLT_FILENAME),
+    'prefix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_TASK1_TEST_POSTS_PREFIX_FILENAME),
+    'infix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_TASK1_TEST_POSTS_INFIX_FILENAME),
+    'latex': '{}/{}'.format(INPUT_DATA_DIRNAME, ARQMATH_TASK1_TEST_POSTS_LATEX_FILENAME),
+}
+
 DATASET_NUMS_PARAGRAPHS = {
     'no_problem': ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS,
     'warning_1': ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS,
@@ -115,8 +123,10 @@ DATASET_JSON_FILENAMES = {
     },
 }
 
-TASK='task1-votes'
-SUBSET='validation'
+TASK_JUDGED='task1-votes'
+SUBSET_JUDGED='validation'
+TASK_ALL='task1-votes.V1.2'
+SUBSET_ALL='test'
 TOPN=1000
 
 DOC2VEC_CONFIGURATIONS = {
@@ -129,6 +139,7 @@ DOC2VEC_CONFIGURATIONS = {
         # ('prefix', 'no_problem', {}, {'window': 6, 'vector_size': 300}),
     ],
     'all': [
+        ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
         # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10})
     ]
 }
@@ -198,6 +209,8 @@ FASTTEXT_CONFIGURATIONS = {
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 200}, {}),  # NDCG' 0.7610
     ],
     'all': [
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
+        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 10}, {'nonzero_limit': 100}, {}),
     ],
 }
 
@@ -205,21 +218,29 @@ FASTTEXT_CONFIGURATIONS = {
 def get_common_parameters(judged_results, math_representation, datasets, dataset_parameters):
     discard_math = math_representation == 'nomath'
 
+
+    document_corpus_filename = ARQMATH_COLLECTION_POSTS_FILENAMES[math_representation if not discard_math else 'latex']
+    document_corpus_num_documents = ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS
+
     if judged_results:
-        corpus_filename = ARQMATH_COLLECTION_POSTS_FILENAMES[math_representation if not discard_math else 'latex']
-        corpus_num_documents = ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS
-        topic_corpus_filename = corpus_filename
-        topic_corpus_num_documents = corpus_num_documents
-        document_corpus_filename = corpus_filename
-        document_corpus_num_documents = corpus_num_documents
-        topic_ids = get_topics(task=TASK, subset=SUBSET)
-        document_ids = get_judged_documents(task=TASK, subset=SUBSET)
+        topic_corpus_filename = document_corpus_filename
+        topic_corpus_num_documents = document_corpus_num_documents
+        topic_ids = get_topics(task=TASK_JUDGED, subset=SUBSET_JUDGED)
+        document_ids = get_judged_documents(task=TASK_JUDGED, subset=SUBSET_JUDGED)
         topic_judgements = {
-            topic_id: get_judged_documents(task=TASK, subset=SUBSET, topic=topic_id)
+            topic_id: get_judged_documents(task=TASK_JUDGED, subset=SUBSET_JUDGED, topic=topic_id)
             for topic_id in topic_ids
         }
     else:
-        assert False  # FIXME
+        topic_corpus_filename = ARQMATH_TASK1_TEST_POSTS_FILENAMES[math_representation if not discard_math else 'latex']
+        topic_corpus_num_documents = ARQMATH_TASK1_TEST_POSTS_NUM_DOCUMENTS
+        topic_ids = [
+            'A.{}'.format(query_number + 1)
+            for query_number in range(100)
+            if (query_number + 1) not in (31, 78)
+        ]
+        document_ids = get_judged_documents(task=TASK_ALL, subset=SUBSET_ALL)
+        topic_judgements = None
 
     if isinstance(datasets, str):
         datasets = [datasets]

@@ -32,8 +32,9 @@ Then, you can either:
 
 1. download our results by executing the `dvc pull` command, or
 2. reproduce our results by installing the dependencies of the
-   [ARQMath-data-preprocessing][] repository and then executing the `dvc repro`
-   command.
+   [ARQMath-data-preprocessing][] repository, reproducing or downloading the
+   results in the [ARQMath-data-preprocessing][]  repository, and then
+   executing the `dvc repro` command.
 
 ## Bibliography
 

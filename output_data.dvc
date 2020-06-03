@@ -1,29 +1,8 @@
-deps:
-- md5: 2047d854935ca26c67c3a97804acf72a
-  path: input_data/output_data/arxiv-dataset-arXMLiv-08-2019/arxmliv_latex_08_2019_no_problem.json.gz
-- md5: d4ef949682cf2b2015454fa0968341c8
-  path: input_data/output_data/arxiv-dataset-arXMLiv-08-2019/arxmliv_slt_08_2019_no_problem.json.gz
-- md5: 3948ac040b3643eb2966f6b28734be80
-  path: input_data/output_data/arxiv-dataset-arXMLiv-08-2019/arxmliv_opt_08_2019_no_problem.json.gz
-- md5: 66f57ae75ccff7a0bfca6e9c9ad31276
-  path: input_data/output_data/arxiv-dataset-arXMLiv-08-2019/arxmliv_prefix_08_2019_no_problem.json.gz
-- md5: f5eb6d5a132bf7d026bec38e8cd380ec
-  path: input_data/output_data/arxiv-dataset-arXMLiv-08-2019/arxmliv_infix_08_2019_no_problem.json.gz
-- md5: 9e4726636426162683fd5cb2b0a0dcd2
-  path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_latex.json.gz
-- md5: 6b6799a1c6a1ffd5843f3d761c6c6c99
-  path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_slt.json.gz
-- md5: 1caad340a25646c45d70ddb6992f2692
-  path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_opt.json.gz
-- md5: 39492079401bdf8e3a579f3417d306bb
-  path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_prefix.json.gz
-- md5: cc790e32bb913c27e28e36afa7e89ec5
-  path: input_data/output_data/ARQMath_CLEF2020/Collection/Posts_V1_0_infix.json.gz
 outs:
 - persist: false
-  md5: a5782f77e839e7dc07305eb4c3241aab.dir
+  md5: abd987558e3495f86f4f9cb9cca6c664.dir
   cache: true
   path: output_data
   metric: false
-md5: 6ad783c64d6c88eefbe153d8aae38821
-cmd: python -m scripts.json_to_fasttext_and_scm
+md5: d1dbb89a7ea1df632e50e58165b26786
+cmd: python -m scripts.json_to_fasttext_and_scm && python -m scripts.json_to_doc2vec
