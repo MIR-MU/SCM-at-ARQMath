@@ -15,7 +15,7 @@ from .configuration import CSV_PARAMETERS, get_doc2vec_configurations
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
     for configuration in get_doc2vec_configurations():
 
         json_filenames = configuration['json_filenames']
@@ -123,11 +123,17 @@ if __name__ == '__main__':
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
                 results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker)
                 for topic_id, top_documents_and_similarities in results:
+                    if isinstance(topic_id, tuple):
+                        _, topic_id = topic_id
                     for rank, (document_id, similarity) in enumerate(top_documents_and_similarities):
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
-                            row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_1')
+                            if isinstance(document_id, tuple):
+                                formula_id, post_id = document_id
+                                row = (topic_id, formula_id, post_id, rank + 1, similarity, 'Run_Formula2Vec_1')
+                            else:
+                                row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_1')
                         csv_writer.writerow(row)
 
             del model, topic_corpus, document_corpus
