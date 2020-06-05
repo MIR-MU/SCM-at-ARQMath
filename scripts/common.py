@@ -1,8 +1,10 @@
 # -*- coding:utf-8 -*-
 
+import csv
 import gzip
 from itertools import chain, repeat
 import json
+import logging
 from multiprocessing import Pool
 from concurrent.futures import ProcessPoolExecutor
 import re
@@ -10,10 +12,11 @@ import re
 from gensim.models.doc2vec import TaggedDocument
 from tqdm import tqdm
 
-from .configuration import POOL_CHUNKSIZE, POOL_NUM_WORKERS, TOPN
+from .configuration import CSV_PARAMETERS, POOL_CHUNKSIZE, POOL_NUM_WORKERS, TOPN
 
 
 JSON_LINE_REGEX = re.compile(r'"(?P<document_name>[^"]*)": (?P<json_document>.*),')
+LOGGER = logging.getLogger(__name__)
 
 
 def get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker=None):
@@ -62,7 +65,11 @@ def get_topn(documents_and_similarities):
         for document, similarity
         in documents_and_similarities
     )
-    top_documents_and_similarities = sorted(documents, key=lambda x: x[1], reverse=True)[:TOPN]
+    top_documents_and_similarities = sorted(
+        documents,
+        key=lambda x: (x[1], x[0]),
+        reverse=True,
+    )[:TOPN]
     return top_documents_and_similarities
 
 
@@ -72,10 +79,26 @@ def read_corpora(configuration, reader_kwargs):
     topic_ids = configuration['topic_ids']
     topic_transformer = configuration['topic_transformer']
 
+    assert topic_corpus_filename.endswith('.tsv') or topic_corpus_filename.endswith('.json')
+    if topic_corpus_filename.endswith('.tsv'):
+        def read_topics():
+            return read_tsv_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs)
+    else:
+        def read_topics():
+            return read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs)
+
     document_corpus_filename = configuration['document_corpus_filename']
     document_corpus_num_documents = configuration['document_corpus_num_documents']
     document_ids = configuration['document_ids']
     document_transformer = configuration['document_transformer']
+
+    assert document_corpus_filename.endswith('.tsv') or document_corpus_filename.endswith('.json')
+    if document_corpus_filename.endswith('.tsv'):
+        def read_documents():
+            return read_tsv_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs)
+    else:
+        def read_documents():
+            return read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs)
 
     parallelize_transformers = configuration['parallelize_transformers']
 
@@ -91,23 +114,63 @@ def read_corpora(configuration, reader_kwargs):
             transform_document = document_transformer
             transform_topic = topic_transformer
 
-        for topic_id, topic in read_json_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs):
-            if topic_id in topic_ids:
-                topic_corpus[topic_id] = transform_topic(topic)
+        topic_num_empty = 0
+        document_num_empty = 0
+
+        for topic_id, topic in read_topics():
+            if topic_ids is None or topic_id in topic_ids:
+                topic = transform_topic(topic)
+                if not topic:
+                    topic_num_empty += 1
+                topic_corpus[topic_id] = topic
             if topic_corpus_filename == document_corpus_filename:
                 document_id = topic_id
                 document = topic
-                if document_id in document_ids:
-                    document_corpus[document_id] = transform_document(document)
+                if document_ids is None or document_id in document_ids:
+                    document = transform_document(document)
+                    if not document:
+                        document_num_empty += 1
+                    document_corpus[document_id] = document
 
-        assert len(topic_ids) == len(topic_corpus)
+        if topic_ids is not None:
+            assert len(topic_ids) == len(topic_corpus), \
+                'Expected {} topics, but read only {}; missing topics: {}'.format(
+                    len(topic_ids),
+                    len(topic_corpus),
+                    topic_ids - set(topic_corpus),
+                )
+
+        LOGGER.info(
+            '{} out of {} topics ({:.2f}%) are empty.'.format(
+                topic_num_empty,
+                len(topic_corpus),
+                100.0 * topic_num_empty / len(topic_corpus),
+            )
+        )
 
         if topic_corpus_filename != document_corpus_filename:
-            for document_id, document in read_json_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs):
-                if document_id in document_ids:
-                    document_corpus[document_id] = transform_document(document)
+            for document_id, document in read_documents():
+                if document_ids is None or document_id in document_ids:
+                    document = transform_document(document)
+                    if not document:
+                        document_num_empty += 1
+                    document_corpus[document_id] = document
 
-        assert len(document_ids) == len(document_corpus)
+        if document_ids is not None:
+            assert len(document_ids) == len(document_corpus), \
+                'Expected {} documents, but read only {}; missing documents: {}'.format(
+                    len(document_ids),
+                    len(document_corpus),
+                    document_ids - set(document_corpus),
+                )
+
+        LOGGER.info(
+            '{} out of {} documents ({:.2f}%) are empty.'.format(
+                document_num_empty,
+                len(document_corpus),
+                100.0 * document_num_empty / len(document_corpus),
+            )
+        )
 
         if parallelize_transformers:
             for corpus, (key, future) in tqdm(
@@ -123,7 +186,58 @@ def read_corpora(configuration, reader_kwargs):
     return (topic_corpus, document_corpus)
 
 
+def read_tsv_file(filename, total_number_of_documents, phraser=None, **kwargs):
+    if kwargs:
+        LOGGER.info('Ignoring named parameters {} in read_tsv_file'.format(', '.join(kwargs.keys())))
+    number_of_documents = 0
+    with open(filename, 'rt') as f:
+        rows = csv.reader(f, **CSV_PARAMETERS)
+        next(rows)
+        with Pool(POOL_NUM_WORKERS) as pool:
+            for result in pool.imap(
+                        read_tsv_file_worker,
+                        tqdm(
+                            rows,
+                            desc='Reading documents from {}'.format(filename),
+                            total=total_number_of_documents,
+                        ),
+		        POOL_CHUNKSIZE,
+                    ):
+                number_of_documents += 1
+                if result is not None:
+                    assert number_of_documents <= total_number_of_documents, \
+                        'Expected {} documents, but just read document number {}'.format(
+                            total_number_of_documents,
+                            number_of_documents,
+                        )
+                    document_name, document = result
+                    if phraser is not None:
+                        document = phraser[document]
+                    yield (document_name, document)
+    assert number_of_documents == total_number_of_documents, \
+        'Expected {} documents, but read only {}'.format(
+            total_number_of_documents,
+            number_of_documents,
+        )
+
+
+def read_tsv_file_worker(row):
+    post_type = row[-2]
+    if post_type not in ('question', 'title', 'answer'):
+        return None
+    formula_id = row[0]
+    post_id = re.sub('^A.', 'B.', row[1])
+    identifier = (formula_id, post_id)
+    math_tokens = [
+        preprocess_token('math:{}'.format(math_token))
+        for math_token in row[-1].split(' ')
+    ]
+    return (identifier, math_tokens)
+
+
 def read_json_file(filename, total_number_of_documents, discard_math=False, concat_math=False, phraser=None, **kwargs):
+    if kwargs:
+        LOGGER.info('Ignoring named parameters {} in read_json_file'.format(', '.join(kwargs.keys())))
     number_of_documents = 0
     with gzip.open(filename, 'rt') as f:
         with Pool(POOL_NUM_WORKERS) as pool:
@@ -176,13 +290,6 @@ def read_json_file_worker(args):
         else:
             concatenated_tokens = []
         return concatenated_tokens
-
-    def preprocess_token(token):
-        assert token.startswith('text:') or token.startswith('math:'), 'Unknown type of token {}'.format(token)
-        if token.startswith('text:'):
-            return token[5:].lower()
-        else:
-            return token[5:].upper()
 
     if not discard_math and concat_math:
         math_token_buffer = []
@@ -254,3 +361,11 @@ class ArXMLivParagraphIterator():
             return TaggedDocument(words=paragraph, tags=[paragraph_name])
         else:
             return paragraph
+
+
+def preprocess_token(token):
+    assert token.startswith('text:') or token.startswith('math:'), 'Unknown type of token {}'.format(token)
+    if token.startswith('text:'):
+        return token[5:].lower()
+    else:
+        return token[5:].upper()
