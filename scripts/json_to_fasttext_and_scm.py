@@ -31,7 +31,8 @@ if __name__ == '__main__':
         termsim_index_parameters = configuration['termsim_index_parameters']
         scm_filename = configuration['scm_filename']
         dictionary_filename = configuration['dictionary_filename']
-        tfidf_filename = configuration['tfidf_filename']
+        topic_tfidf_filename = configuration['topic_tfidf_filename']
+        document_tfidf_filename = configuration['document_tfidf_filename']
         phraser_filename = configuration['phraser_filename']
         topic_ids = configuration['topic_ids']
         topic_corpus_filename = configuration['topic_corpus_filename']
@@ -55,24 +56,23 @@ if __name__ == '__main__':
             'discard_math': discard_math,
             'concat_math': concat_math,
         }
+        phraser_reader_kwargs = reader_kwargs
 
-        tfidf_parameters = {
-            'smartirs': 'dtn',
+        inner_product_parameters = {
+            'normalized': ('maintain', 'maintain'),
         }
 
         try:
             with open(validation_result_filename, 'rt') as f:
                 pass
         except IOError:
-            paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
-
             phraser = None
             phraser_num_iterations = dataset_parameters['phrases']
             if phraser_num_iterations > 0:
                 try:
                     phraser = Phraser.load(phraser_filename.format(phraser_num_iterations))
                 except IOError:
-                    transformed_paragraphs = paragraphs
+                    transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **phraser_reader_kwargs)
                     for phraser_iteration in tqdm(range(phraser_num_iterations), 'Modeling phrases'):
                         try:
                             phraser = Phraser.load(phraser_filename.format(phraser_iteration + 1))
@@ -80,10 +80,11 @@ if __name__ == '__main__':
                             phraser = Phraser(Phrases(transformed_paragraphs, **phrases_parameters))
                             phraser.save(phraser_filename.format(phraser_iteration + 1))
                         reader_kwargs['phraser'] = phraser
-                        transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
+                        transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **phraser_reader_kwargs)
                     del transformed_paragraphs
                 reader_kwargs['phraser'] = phraser
-                paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
+
+            paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
 
             try:
                 dictionary = Dictionary.load(dictionary_filename)
@@ -92,11 +93,18 @@ if __name__ == '__main__':
                 dictionary.save(dictionary_filename)
 
             try:
-                tfidf = TfidfModel.load(tfidf_filename)
+                topic_tfidf = TfidfModel.load(topic_tfidf_filename)
             except IOError:
-                tfidf = TfidfModel(dictionary=dictionary, **tfidf_parameters)
-                tfidf.save(tfidf_filename)
-            termsim_matrix_parameters['tfidf'] = tfidf
+                topic_tfidf = TfidfModel(dictionary=dictionary, smartirs='nnn')
+                topic_tfidf.save(topic_tfidf_filename)
+
+            try:
+                document_tfidf = TfidfModel.load(document_tfidf_filename)
+            except IOError:
+                document_tfidf = TfidfModel(dictionary=dictionary, smartirs='dtb', slope=0.2)
+                document_tfidf.save(document_tfidf_filename)
+
+            termsim_matrix_parameters['tfidf'] = document_tfidf
 
             try:
                 similarity_matrix = SparseTermSimilarityMatrix.load(scm_filename)
@@ -113,32 +121,35 @@ if __name__ == '__main__':
                 similarity_matrix.save(scm_filename)
                 del model, termsim_index
 
-            def topic_and_document_transformer(topic_or_document):
-                return tfidf[dictionary.doc2bow(topic_or_document)]
+            def topic_transformer(topic):
+                return topic_tfidf[dictionary.doc2bow(topic)]
+
+            def document_transformer(document):
+                return document_tfidf[dictionary.doc2bow(document)]
             
             topic_corpus, document_corpus = read_corpora({
                 'topic_corpus_filename': topic_corpus_filename,
                 'topic_corpus_num_documents': topic_corpus_num_documents,
                 'topic_ids': topic_ids,
-                'topic_transformer': topic_and_document_transformer,
+                'topic_transformer': topic_transformer,
                 'document_corpus_filename': document_corpus_filename,
                 'document_corpus_num_documents': document_corpus_num_documents,
                 'document_ids': document_ids,
-                'document_transformer': topic_and_document_transformer,
+                'document_transformer': document_transformer,
                 'parallelize_transformers': False,
             }, reader_kwargs)
 
             def get_results_1N_worker(args):
                 topic_id, topic, document_ids, documents = args
                 with np.errstate(divide='ignore', invalid='ignore'):
-                    similarities = np.ravel(similarity_matrix.inner_product(topic, documents, normalized=True))
+                    similarities = np.ravel(similarity_matrix.inner_product(topic, documents, **inner_product_parameters))
                     assert len(document_ids) == similarities.size
                     return (topic_id, document_ids, similarities)
 
             def get_results_MN_worker(args):
                 topic_ids, topics, document_ids, documents = args
                 with np.errstate(divide='ignore', invalid='ignore'):
-                    similarities_list = similarity_matrix.inner_product(topics, documents, normalized=True)
+                    similarities_list = similarity_matrix.inner_product(topics, documents, **inner_product_parameters)
                     assert (len(topic_ids), len(document_ids)) == similarities_list.shape
                     for topic_index, topic_id in enumerate(topic_ids):
                         similarities = np.ravel(similarities_list[topic_index].todense())
@@ -153,7 +164,7 @@ if __name__ == '__main__':
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
-                            row = (topic_id, document_id, rank + 1, similarity, 'Run_SCM_0')
+                            row = (topic_id, document_id, rank + 1, similarity, 'Run_SCM_1')
                         csv_writer.writerow(row)
 
-            del dictionary, tfidf, similarity_matrix, topic_corpus, document_corpus
+            del dictionary, topic_tfidf, document_tfidf, similarity_matrix, topic_corpus, document_corpus

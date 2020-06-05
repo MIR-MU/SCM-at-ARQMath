@@ -1,8 +1,8 @@
 outs:
 - persist: false
-  md5: abd987558e3495f86f4f9cb9cca6c664.dir
+  md5: d312cc9f252ba09f57e5e3f7f92b2614.dir
   cache: true
   path: output_data
   metric: false
-md5: d1dbb89a7ea1df632e50e58165b26786
+md5: 8ac0aafb984d0f9e41d5e0c73afab17c
 cmd: python -m scripts.json_to_fasttext_and_scm && python -m scripts.json_to_doc2vec

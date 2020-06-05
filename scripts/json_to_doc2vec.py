@@ -43,26 +43,28 @@ if __name__ == '__main__':
 
         discard_math = configuration['discard_math']
         concat_math = False
-        reader_args = [json_filenames, [json_nums_paragraphs]]
+        reader_args = [json_filenames, json_nums_paragraphs]
         reader_kwargs = {
             'discard_math': discard_math,
             'concat_math': concat_math,
             'tagged_documents': True,
+        }
+        phraser_reader_kwargs = {
+            **reader_kwargs,
+            'tagged_documents': False,
         }
 
         try:
             with open(validation_result_filename, 'rt') as f:
                 pass
         except IOError:
-            paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
-
             phraser = None
             phraser_num_iterations = dataset_parameters['phrases']
             if phraser_num_iterations > 0:
                 try:
                     phraser = Phraser.load(phraser_filename.format(phraser_num_iterations))
                 except IOError:
-                    transformed_paragraphs = paragraphs
+                    transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **phraser_reader_kwargs)
                     for phraser_iteration in tqdm(range(phraser_num_iterations), 'Modeling phrases'):
                         try:
                             phraser = Phraser.load(phraser_filename.format(phraser_iteration + 1))
@@ -70,10 +72,11 @@ if __name__ == '__main__':
                             phraser = Phraser(Phrases(transformed_paragraphs, **phrases_parameters))
                             phraser.save(phraser_filename.format(phraser_iteration + 1))
                         reader_kwargs['phraser'] = phraser
-                        transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
+                        transformed_paragraphs = ArXMLivParagraphIterator(*reader_args, **phraser_reader_kwargs)
                     del transformed_paragraphs
                 reader_kwargs['phraser'] = phraser
-                paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
+
+            paragraphs = ArXMLivParagraphIterator(*reader_args, **reader_kwargs)
 
             try:
                 model = Doc2Vec.load(doc2vec_filename, mmap='r')
@@ -124,7 +127,7 @@ if __name__ == '__main__':
                         if judged_results:
                             row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
                         else:
-                            row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_0')
+                            row = (topic_id, document_id, rank + 1, similarity, 'Run_Formula2Vec_1')
                         csv_writer.writerow(row)
 
             del model, topic_corpus, document_corpus

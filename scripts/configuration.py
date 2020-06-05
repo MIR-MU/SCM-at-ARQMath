@@ -139,8 +139,8 @@ DOC2VEC_CONFIGURATIONS = {
         # ('prefix', 'no_problem', {}, {'window': 6, 'vector_size': 300}),
     ],
     'all': [
-        ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
-        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10})
+        # ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
+        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10})
     ]
 }
 
@@ -209,8 +209,8 @@ FASTTEXT_CONFIGURATIONS = {
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 200}, {}),  # NDCG' 0.7610
     ],
     'all': [
-        ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
-        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 10}, {'nonzero_limit': 100}, {}),
+        # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
+        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
     ],
 }
 
@@ -309,13 +309,14 @@ def get_fasttext_configurations():
 
         dataset_parameter_string = parameters_to_string(common_parameters['dataset_parameters'])
         dictionary_filename = ARXMLIV_OUTPUT_FILENAME.format(math_representation, '{}.dictionary'.format(dataset_parameter_string))
-        tfidf_filename = ARXMLIV_OUTPUT_FILENAME.format(math_representation, '{}.tfidf'.format(dataset_parameter_string))
+        topic_tfidf_filename = ARXMLIV_OUTPUT_FILENAME.format(math_representation, '{}.Ttfidf'.format(dataset_parameter_string))
+        document_tfidf_filename = ARXMLIV_OUTPUT_FILENAME.format(math_representation, '{}.Dtfidf'.format(dataset_parameter_string))
 
         fasttext_parameters = {**FASTTEXT_DEFAULT_PARAMETERS, **fasttext_parameters}
         fasttext_parameter_string = '_'.join((dataset_parameter_string, parameters_to_string(fasttext_parameters)))
         if 'bucket' in fasttext_parameters:
             bucket = fasttext_parameters['bucket']
-            fasttext_parameters['bucket'] = float(bucket[:-1]) * 10**6
+            fasttext_parameters['bucket'] = int(bucket[:-1]) * 10**6
         fasttext_filename = ARXMLIV_OUTPUT_FILENAME.format(math_representation, fasttext_parameter_string)
 
         termsim_matrix_parameters = {**TERMSIM_MATRIX_DEFAULT_PARAMETERS, **termsim_matrix_parameters}
@@ -338,6 +339,7 @@ def get_fasttext_configurations():
             'termsim_index_parameters': termsim_index_parameters,
             'scm_filename': scm_filename,
             'dictionary_filename': dictionary_filename,
-            'tfidf_filename': tfidf_filename,
+            'topic_tfidf_filename': topic_tfidf_filename,
+            'document_tfidf_filename': document_tfidf_filename,
             'validation_result_filename': validation_result_filename,
         }
