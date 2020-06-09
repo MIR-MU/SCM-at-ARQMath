@@ -20,6 +20,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     for configuration in get_fasttext_configurations():
 
+        result_type = configuration['result_type']
         json_filenames = configuration['json_filenames']
         json_nums_paragraphs = configuration['json_nums_paragraphs']
         judged_results = configuration['judged_results']
@@ -156,6 +157,13 @@ if __name__ == '__main__':
                         assert len(document_ids) == similarities.size
                         yield (topic_id, document_ids, similarities)
 
+            if result_type == 'judged':
+                run_name = 'xxx'
+            elif result_name == 'task1':
+                run_name = 'Run_SCM_1'
+            elif result_name == 'task2':
+                run_name = 'Run_SCM_2'
+
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
                 results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker)
@@ -164,13 +172,13 @@ if __name__ == '__main__':
                         _, topic_id = topic_id
                     for rank, (document_id, similarity) in enumerate(top_documents_and_similarities):
                         if judged_results:
-                            row = (topic_id, 'xxx', document_id, rank + 1, similarity, 'xxx')
+                            row = (topic_id, 'xxx', document_id, rank + 1, similarity, run_name)
                         else:
                             if isinstance(document_id, tuple):
                                 formula_id, post_id = document_id
-                                row = (topic_id, formula_id, post_id, rank + 1, similarity, 'Run_SCM_1')
+                                row = (topic_id, formula_id, post_id, rank + 1, similarity, run_name)
                             else:
-                                row = (topic_id, document_id, rank + 1, similarity, 'Run_SCM_1')
+                                row = (topic_id, document_id, rank + 1, similarity, run_name)
                         csv_writer.writerow(row)
 
             del dictionary, topic_tfidf, document_tfidf, similarity_matrix, topic_corpus, document_corpus

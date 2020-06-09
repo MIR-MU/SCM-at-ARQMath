@@ -347,6 +347,7 @@ def get_common_parameters(result_type, math_representation, datasets, dataset_pa
         'document_corpus_filename': document_corpus_filename,
         'document_corpus_num_documents': document_corpus_num_documents,
         'discard_math': discard_math,
+        'result_type': result_type,
     }
 
 
