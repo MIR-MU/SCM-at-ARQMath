@@ -7,12 +7,13 @@ import sys
 from .configuration import CSV_PARAMETERS, TOPN
 
 
-def renumber_ranks(input_filename, output_filename, task='task1'):
+def renumber_ranks(input_filename, output_filename, task):
+    assert task in ('task1', 'task2')
+
     results = dict()
     with open(input_filename, 'rt', newline='') as csv_file:
         csv_reader = csv.reader(csv_file, **CSV_PARAMETERS)
         for row in csv_reader:
-            topic_id = row[0]
             if task == 'task1':
                 topic_id, post_id, rank, score, description = row
                 identifier = (post_id,)
@@ -29,20 +30,19 @@ def renumber_ranks(input_filename, output_filename, task='task1'):
     with open(output_filename, 'wt', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, **CSV_PARAMETERS)
         for topic_id, topic_results in sorted(results.items()):
-            for rank, row in enumerate(sorted(topic_results, key=lambda x: (x[-3], x[-2])))
-                rank = rank + 1
+            for rank, row in enumerate(sorted(topic_results, key=lambda x: (x[-3], x[-2]))):
                 topic_id, *identifier, _, score, description = row
                 row = (topic_id, *identifier, rank + 1, score, description)
                 csv_writer.writerow(row)
 
 
 if __name__ == '__main__':
-    input_filename = sys.argv[0]
-    output_filename = sys.argv[1]
+    input_filename = sys.argv[1]
+    output_filename = sys.argv[2]
     if '-task1-' in input_filename or '-task1-' in output_filename:
         task = 'task1'
     elif '-task2-' in input_filename or '-task2-' in output_filename:
         task = 'task2'
     else:
         raise ValueError('Task of SERPs cannot be guessed')
-    combine_serps(input_filename, output_filename, task)
+    renumber_ranks(input_filename, output_filename, task)
