@@ -39,4 +39,10 @@ def renumber_ranks(input_filename, output_filename, task='task1'):
 if __name__ == '__main__':
     input_filename = sys.argv[0]
     output_filename = sys.argv[1]
-    combine_serps(input_filename, output_filename)
+    if '-task1-' in input_filename or '-task1-' in output_filename:
+        task = 'task1'
+    elif '-task2-' in input_filename or '-task2-' in output_filename:
+        task = 'task2'
+    else:
+        raise ValueError('Task of SERPs cannot be guessed')
+    combine_serps(input_filename, output_filename, task)

@@ -11,7 +11,7 @@ from .configuration import CSV_PARAMETERS, TOPN
 RUN_NAME = 'Run_Ensemble_0'
 
 
-def combine_serps(input_filenames, output_filename, task='task1'):
+def combine_serps(input_filenames, output_filename, task):
     assert task in ('task1', 'task2')
 
     num_systems = len(input_filenames)
@@ -55,4 +55,10 @@ def combine_serps(input_filenames, output_filename, task='task1'):
 if __name__ == '__main__':
     input_filenames = sys.argv[1:-1]
     output_filename = sys.argv[-1]
-    combine_serps(input_filenames, output_filename)
+    if '-task1-' in input_filename or any('-task1-' in filename for filename in output_filenames):
+        task = 'task1'
+    elif '-task2-' in input_filename or any('-task2-' in filename for filename in output_filenames):
+        task = 'task2'
+    else:
+        raise ValueError('Task of SERPs cannot be guessed')
+    combine_serps(input_filenames, output_filename, task)
