@@ -16,9 +16,12 @@ def combine_serps(input_filenames, output_filename, task):
 
     num_systems = len(input_filenames)
 
+    def inverse_rank(rank):
+        return float(TOPN - rank) / TOPN
+
     def inverse_median_rank(ranks):
         ranks = [*ranks, *[TOPN] * (num_systems - len(ranks))]
-        return float(TOPN - median(ranks)) / TOPN
+        return inverse_rank(median(ranks))
 
     separate_results = dict()
     for input_filename in input_filenames:
@@ -45,10 +48,11 @@ def combine_serps(input_filenames, output_filename, task):
         csv_writer = csv.writer(csv_file, **CSV_PARAMETERS)
         for topic_id, identifiers in separate_results.items():
             ensemble_results = dict()
-            for identifier, ranks in identifiers.items():
-                ensemble_results[identifier] = inverse_median_rank(ranks)
+            for identifier_index, (identifier, ranks) in enumerate(sorted(identifiers.items())):
+                striped_rank = ranks[identifier_index % len(ranks)]
+                ensemble_results[identifier] = (inverse_median_rank(ranks), inverse_rank(striped_rank))
             ensemble_results = sorted(ensemble_results.items(), key=lambda x: (x[1], x[0]), reverse=True)
-            for rank, (identifier, score) in enumerate(ensemble_results[:TOPN]):
+            for rank, (identifier, (score, _)) in enumerate(ensemble_results[:TOPN]):
                 csv_writer.writerow((topic_id, *identifier, rank + 1, score, RUN_NAME))
 
 
