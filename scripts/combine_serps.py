@@ -55,9 +55,9 @@ def combine_serps(input_filenames, output_filename, task):
 if __name__ == '__main__':
     input_filenames = sys.argv[1:-1]
     output_filename = sys.argv[-1]
-    if '-task1-' in input_filename or any('-task1-' in filename for filename in output_filenames):
+    if any('-task1-' in filename for filename in input_filenames) or '-task1-' in output_filename:
         task = 'task1'
-    elif '-task2-' in input_filename or any('-task2-' in filename for filename in output_filenames):
+    elif any('-task2-' in filename for filename in input_filenames) or '-task2-' in output_filename:
         task = 'task2'
     else:
         raise ValueError('Task of SERPs cannot be guessed')
