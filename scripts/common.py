@@ -79,7 +79,8 @@ def read_corpora(configuration, reader_kwargs):
     topic_ids = configuration['topic_ids']
     topic_transformer = configuration['topic_transformer']
 
-    assert topic_corpus_filename.endswith('.tsv') or topic_corpus_filename.endswith('.json')
+    assert topic_corpus_filename.endswith('.tsv') or topic_corpus_filename.endswith('.json.gz'), \
+        'Unknown type of topic corpus {}'.format(topic_corpus_filename)
     if topic_corpus_filename.endswith('.tsv'):
         def read_topics():
             return read_tsv_file(topic_corpus_filename, topic_corpus_num_documents, **reader_kwargs)
@@ -92,7 +93,8 @@ def read_corpora(configuration, reader_kwargs):
     document_ids = configuration['document_ids']
     document_transformer = configuration['document_transformer']
 
-    assert document_corpus_filename.endswith('.tsv') or document_corpus_filename.endswith('.json')
+    assert document_corpus_filename.endswith('.tsv') or document_corpus_filename.endswith('.json.gz'), \
+        'Unknown type of topic corpus {}'.format(document_corpus_filename)
     if document_corpus_filename.endswith('.tsv'):
         def read_documents():
             return read_tsv_file(document_corpus_filename, document_corpus_num_documents, **reader_kwargs)

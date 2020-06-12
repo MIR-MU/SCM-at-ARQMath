@@ -96,7 +96,7 @@ if __name__ == '__main__':
             try:
                 topic_tfidf = TfidfModel.load(topic_tfidf_filename)
             except IOError:
-                topic_tfidf = TfidfModel(dictionary=dictionary, smartirs='nnn')
+                topic_tfidf = TfidfModel(dictionary=dictionary, smartirs='dtb', slope=0.2)
                 topic_tfidf.save(topic_tfidf_filename)
 
             try:
@@ -159,10 +159,10 @@ if __name__ == '__main__':
 
             if result_type == 'judged':
                 run_name = 'xxx'
-            elif result_name == 'task1':
-                run_name = 'Run_SCM_1'
-            elif result_name == 'task2':
+            elif result_type == 'task1':
                 run_name = 'Run_SCM_2'
+            elif result_type == 'task2':
+                run_name = 'Run_SCM_3'
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)

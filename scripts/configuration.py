@@ -188,11 +188,13 @@ DOC2VEC_CONFIGURATIONS = {
     ],
     'task1': [
         # ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
-        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
+        # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
+        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
     ],
     'task2': [
         # ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
-        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
+        # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
+        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
     ],
 }
 
@@ -254,7 +256,7 @@ FASTTEXT_CONFIGURATIONS = {
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 100}, {}),  # NDCG' 0.7610
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 200}, {}),  # NDCG' 0.7611
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 400}, {}),  # NDCG' 0.7613
-        # ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 800}, {}),
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 800}, {}),  # NDCG' 0.7609
       
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 50}, {}),   # NDCG' 0.7612
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 100}, {}),  # NDCG' 0.7610
@@ -262,11 +264,13 @@ FASTTEXT_CONFIGURATIONS = {
     ],
     'task1': [
         # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
-        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
     ],
     'task2': [
         # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
-        ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
     ],
 }
 
