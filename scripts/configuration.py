@@ -5,7 +5,7 @@ from itertools import repeat, chain
 from multiprocessing import cpu_count
 
 from arqmath_eval import get_topics, get_judged_documents
-from input_data.scripts.configuration import ARXMLIV_NOPROBLEM_JSON_OPT_FILENAME, ARXMLIV_NOPROBLEM_JSON_SLT_FILENAME, ARXMLIV_NOPROBLEM_JSON_PREFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_INFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_LATEX_FILENAME, ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS, POOL_CHUNKSIZE, POOL_NUM_WORKERS, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, ARQMATH_COLLECTION_POSTS_OPT_FILENAME, ARQMATH_COLLECTION_POSTS_SLT_FILENAME, ARQMATH_COLLECTION_POSTS_PREFIX_FILENAME, ARQMATH_COLLECTION_POSTS_INFIX_FILENAME, ARQMATH_COLLECTION_POSTS_LATEX_FILENAME, CSV_PARAMETERS, ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS, ARXMLIV_WARNING1_JSON_OPT_FILENAME, ARXMLIV_WARNING1_JSON_SLT_FILENAME, ARXMLIV_WARNING1_JSON_PREFIX_FILENAME, ARXMLIV_WARNING1_JSON_INFIX_FILENAME, ARXMLIV_WARNING1_JSON_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_OPT_FILENAME, ARQMATH_TASK1_TEST_POSTS_SLT_FILENAME, ARQMATH_TASK1_TEST_POSTS_PREFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_INFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_NUM_DOCUMENTS, ARQMATH_TRAIN_TSV_OPT_FILENAME, ARQMATH_TRAIN_TSV_SLT_FILENAME, ARQMATH_TRAIN_TSV_PREFIX_FILENAME, ARQMATH_TRAIN_TSV_INFIX_FILENAME, ARQMATH_TRAIN_TSV_OPT_NUM_FORMULAE, ARQMATH_TRAIN_TSV_SLT_NUM_FORMULAE, ARQMATH_TRAIN_TSV_PREFIX_NUM_FORMULAE, ARQMATH_TRAIN_TSV_INFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_OPT_FILENAME, ARQMATH_TASK2_TEST_TSV_SLT_FILENAME, ARQMATH_TASK2_TEST_TSV_PREFIX_FILENAME, ARQMATH_TASK2_TEST_TSV_INFIX_FILENAME, ARQMATH_TASK2_TEST_TSV_LATEX_FILENAME, ARQMATH_TASK2_TEST_TSV_OPT_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_SLT_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_PREFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_INFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_LATEX_NUM_FORMULAE
+from input_data.scripts.configuration import ARXMLIV_NOPROBLEM_JSON_OPT_FILENAME, ARXMLIV_NOPROBLEM_JSON_SLT_FILENAME, ARXMLIV_NOPROBLEM_JSON_PREFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_INFIX_FILENAME, ARXMLIV_NOPROBLEM_JSON_LATEX_FILENAME, ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS, POOL_CHUNKSIZE, POOL_NUM_WORKERS, ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS, ARQMATH_COLLECTION_POSTS_OPT_FILENAME, ARQMATH_COLLECTION_POSTS_SLT_FILENAME, ARQMATH_COLLECTION_POSTS_PREFIX_FILENAME, ARQMATH_COLLECTION_POSTS_INFIX_FILENAME, ARQMATH_COLLECTION_POSTS_LATEX_FILENAME, CSV_PARAMETERS, ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS, ARXMLIV_WARNING1_JSON_OPT_FILENAME, ARXMLIV_WARNING1_JSON_SLT_FILENAME, ARXMLIV_WARNING1_JSON_PREFIX_FILENAME, ARXMLIV_WARNING1_JSON_INFIX_FILENAME, ARXMLIV_WARNING1_JSON_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_OPT_FILENAME, ARQMATH_TASK1_TEST_POSTS_SLT_FILENAME, ARQMATH_TASK1_TEST_POSTS_PREFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_INFIX_FILENAME, ARQMATH_TASK1_TEST_POSTS_LATEX_FILENAME, ARQMATH_TASK1_TEST_POSTS_NUM_DOCUMENTS, ARQMATH_TRAIN_TSV_OPT_FILENAME, ARQMATH_TRAIN_TSV_SLT_FILENAME, ARQMATH_TRAIN_TSV_PREFIX_FILENAME, ARQMATH_TRAIN_TSV_INFIX_FILENAME, ARQMATH_TRAIN_TSV_OPT_NUM_FORMULAE, ARQMATH_TRAIN_TSV_SLT_NUM_FORMULAE, ARQMATH_TRAIN_TSV_PREFIX_NUM_FORMULAE, ARQMATH_TRAIN_TSV_INFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_OPT_FILENAME, ARQMATH_TASK2_TEST_TSV_SLT_FILENAME, ARQMATH_TASK2_TEST_TSV_PREFIX_FILENAME, ARQMATH_TASK2_TEST_TSV_INFIX_FILENAME, ARQMATH_TASK2_TEST_TSV_LATEX_FILENAME, ARQMATH_TASK2_TEST_TSV_OPT_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_SLT_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_PREFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_INFIX_NUM_FORMULAE, ARQMATH_TASK2_TEST_TSV_LATEX_NUM_FORMULAE, ARXMLIV_WARNING2_HTML5_NUM_PARAGRAPHS, ARXMLIV_WARNING2_JSON_OPT_FILENAME, ARXMLIV_WARNING2_JSON_SLT_FILENAME, ARXMLIV_WARNING2_JSON_PREFIX_FILENAME, ARXMLIV_WARNING2_JSON_INFIX_FILENAME, ARXMLIV_WARNING2_JSON_LATEX_FILENAME
 
 from tqdm import tqdm
 
@@ -134,6 +134,7 @@ ARQMATH_TASK1_POSTS_FILENAMES = {
 DATASET_NUMS_PARAGRAPHS = {
     'no_problem': ARXMLIV_NOPROBLEM_HTML5_NUM_PARAGRAPHS,
     'warning_1': ARXMLIV_WARNING1_HTML5_NUM_PARAGRAPHS,
+    'warning_2': ARXMLIV_WARNING2_HTML5_NUM_PARAGRAPHS,
     'arqmath': ARQMATH_COLLECTION_POSTS_NUM_DOCUMENTS,
 }
 
@@ -151,6 +152,13 @@ DATASET_JSON_FILENAMES = {
         'prefix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING1_JSON_PREFIX_FILENAME),
         'infix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING1_JSON_INFIX_FILENAME),
         'latex': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING1_JSON_LATEX_FILENAME),
+    },
+    'warning_2': {
+        'opt': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING2_JSON_OPT_FILENAME),
+        'slt': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING2_JSON_SLT_FILENAME),
+        'prefix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING2_JSON_PREFIX_FILENAME),
+        'infix': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING2_JSON_INFIX_FILENAME),
+        'latex': '{}/{}'.format(INPUT_DATA_DIRNAME, ARXMLIV_WARNING2_JSON_LATEX_FILENAME),
     },
     'arqmath': {
         'opt': ARQMATH_COLLECTION_POSTS_FILENAMES['opt'],
@@ -189,12 +197,14 @@ DOC2VEC_CONFIGURATIONS = {
     'task1': [
         # ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
         # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
-        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
+        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
+        ('prefix', ['no_problem', 'warning_1', 'warning_2', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
     ],
     'task2': [
         # ('prefix', 'no_problem', {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8}),
         # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
-        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
+        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 2}),
+        ('prefix', ['no_problem', 'warning_1', 'warning_2', 'arqmath'], {'phrases': 2}, {'dm': 0, 'vector_size': 300, 'negative': 12, 'hs': 0, 'alpha': 0.1, 'window': 8, 'epochs': 10}),
     ],
 }
 
@@ -265,12 +275,14 @@ FASTTEXT_CONFIGURATIONS = {
     'task1': [
         # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
         # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
-        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        ('prefix', ['no_problem', 'warning_1', 'warning_2', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
     ],
     'task2': [
         # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
         # ('prefix', ['no_problem', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
-        ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        # ('prefix', ['no_problem', 'warning_1', 'arqmath'], {'phrases': 2}, {'iter': 2, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
+        ('prefix', ['no_problem', 'warning_1', 'warning_2', 'arqmath'], {'phrases': 2}, {'iter': 10, 'negative': 10, 'min_n': 4, 'max_n': 5, 'sg': 0}, {'nonzero_limit': 100}, {}),
     ],
 }
 

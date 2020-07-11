@@ -123,9 +123,9 @@ if __name__ == '__main__':
             if result_type == 'judged':
                 run_name = 'xxx'
             elif result_type == 'task1':
-                run_name = 'Run_Formula2Vec_2'
-            elif result_type == 'task2':
                 run_name = 'Run_Formula2Vec_3'
+            elif result_type == 'task2':
+                run_name = 'Run_Formula2Vec_4'
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
