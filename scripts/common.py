@@ -122,16 +122,12 @@ def read_corpora(configuration, reader_kwargs):
         for topic_id, topic in read_topics():
             if topic_ids is None or topic_id in topic_ids:
                 topic = transform_topic(topic)
-                if not topic:
-                    topic_num_empty += 1
                 topic_corpus[topic_id] = topic
             if topic_corpus_filename == document_corpus_filename:
                 document_id = topic_id
                 document = topic
                 if document_ids is None or document_id in document_ids:
                     document = transform_document(document)
-                    if not document:
-                        document_num_empty += 1
                     document_corpus[document_id] = document
 
         if topic_ids is not None:
@@ -154,8 +150,6 @@ def read_corpora(configuration, reader_kwargs):
             for document_id, document in read_documents():
                 if document_ids is None or document_id in document_ids:
                     document = transform_document(document)
-                    if not document:
-                        document_num_empty += 1
                     document_corpus[document_id] = document
 
         if document_ids is not None:

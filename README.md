@@ -4,7 +4,7 @@ This repository contains the math information retrieval (MIR) system for the
 [ARQMath][] competition based on the tf-idf model and the soft cosine measure
 [[1][]]:
 
- ![Joint word embeddings and soft cosine measure at ARQMath][pv173-talk]
+ [Joint word embeddings and soft cosine measure at ARQMath][pv173-talk]
 
 The system build on the following other repositories:
 

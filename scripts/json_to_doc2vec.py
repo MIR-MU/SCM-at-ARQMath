@@ -98,14 +98,19 @@ if __name__ == '__main__':
                 'document_corpus_num_documents': document_corpus_num_documents,
                 'document_ids': document_ids,
                 'document_transformer': topic_and_document_transformer,
-                'parallelize_transformers': True,
+                'parallelize_transformers': False,
             }, reader_kwargs)
 
             def get_results_1N_worker(args):
                 topic_id, topic, document_ids, documents = args
+                from datetime import datetime
+                time1 = datetime.now()
                 topic = np.array([topic])
                 documents = np.array(documents)
                 similarities = np.ravel(cosine_similarity(topic, documents))
+                time2 = datetime.now()
+                duration = (time2 - time1).total_seconds()
+                print('Topic ID {}: {:g} seconds'.format(topic_id, duration))
                 assert len(document_ids) == similarities.size
                 return (topic_id, document_ids, similarities)
 
@@ -129,7 +134,7 @@ if __name__ == '__main__':
 
             with open(validation_result_filename, 'wt') as f:
                 csv_writer = csv.writer(f, **CSV_PARAMETERS)
-                results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker, get_results_MN_worker)
+                results = get_results(topic_corpus, document_corpus, topic_judgements, get_results_1N_worker)
                 for topic_id, top_documents_and_similarities in results:
                     if isinstance(topic_id, tuple):
                         _, topic_id = topic_id
