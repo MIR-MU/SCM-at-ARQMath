@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 RUN_NAME = 'Run_Ensemble_0'
 
 
-def combine_serps(input_filenames, output_filename, task):
+def combine_serps(input_filenames, output_filename, task, fairer_tiebreaking):
     assert task in ('task1', 'task2')
 
     num_systems = len(input_filenames)
@@ -58,12 +58,17 @@ def combine_serps(input_filenames, output_filename, task):
             ensemble_results = dict()
             for identifier_index, (identifier, ranks) in enumerate(sorted(identifiers.items())):
                 striped_rank = ranks[identifier_index % len(ranks)]
-                ensemble_results[identifier] = (inverse_median_rank(ranks), len(ranks), inverse_rank(striped_rank))
-            ensemble_results = sorted(ensemble_results.items(), key=lambda x: (x[1], x[0]), reverse=True)
+                if fairer_tiebreaking:
+                    score = (inverse_median_rank(ranks), len(ranks), inverse_rank(striped_rank), identifier_index)
+                else:
+                    score = (inverse_median_rank(ranks), len(ranks), inverse_rank(striped_rank), identifier)
+                ensemble_results[identifier] = score
+            ensemble_results = sorted(ensemble_results.items(), key=lambda x: x[1], reverse=True)
             ensemble_results = ensemble_results[:TOPN]
-            num_clusters_1 = len(set((x for _, (x, y, z) in ensemble_results)))
-            num_clusters_2 = len(set(((x, y) for _, (x, y, z) in ensemble_results)))
-            num_clusters_3 = len(set(((x, y, z) for _, (x, y, z) in ensemble_results)))
+            assert len(ensemble_results) == TOPN
+            num_clusters_1 = len(set((x for _, (x, y, z, __) in ensemble_results)))
+            num_clusters_2 = len(set(((x, y) for _, (x, y, z, __) in ensemble_results)))
+            num_clusters_3 = len(set(((x, y, z) for _, (x, y, z, __) in ensemble_results)))
             num_clusters_4 = len(ensemble_results)
             percentages_tied_1.append(100.0 * (num_clusters_4 - num_clusters_1) / num_clusters_4)
             percentages_tied_2.append(100.0 * (num_clusters_4 - num_clusters_2) / num_clusters_4)
@@ -71,9 +76,11 @@ def combine_serps(input_filenames, output_filename, task):
             nums_results.append(num_clusters_4)
             for rank, (identifier, (score, *_)) in enumerate(ensemble_results):
                 csv_writer.writerow((topic_id, *identifier, rank + 1, score, RUN_NAME))
-    percentage_tied_1 = np.array(percentages_tied_1).T.dot(np.array(nums_results)) / np.sum(nums_results)
-    percentage_tied_2 = np.array(percentages_tied_2).T.dot(np.array(nums_results)) / np.sum(nums_results)
-    percentage_tied_3 = np.array(percentages_tied_3).T.dot(np.array(nums_results)) / np.sum(nums_results)
+    nums_results = np.array(nums_results)
+    num_results = np.sum(nums_results)
+    percentage_tied_1 = np.array(percentages_tied_1).T.dot(nums_results) / num_results
+    percentage_tied_2 = np.array(percentages_tied_2).T.dot(nums_results) / num_results
+    percentage_tied_3 = np.array(percentages_tied_3).T.dot(nums_results) / num_results
     LOGGER.info('Percentage of tied results when ordering via (M^-1): {:.2f}'.format(percentage_tied_1))
     LOGGER.info('Percentage of tied results when ordering via (M^-1, f): {:.2f}'.format(percentage_tied_2))
     LOGGER.info('Percentage of tied results when ordering via (M^-1, f, S^-1): {:.2f}'.format(percentage_tied_3))
@@ -89,4 +96,8 @@ if __name__ == '__main__':
         task = 'task2'
     else:
         raise ValueError('Task of SERPs cannot be guessed')
-    combine_serps(input_filenames, output_filename, task)
+    if '-fairer-' in output_filename:
+        fairer_tiebreaking = True
+    else:
+        fairer_tiebreaking = False
+    combine_serps(input_filenames, output_filename, task, fairer_tiebreaking)
