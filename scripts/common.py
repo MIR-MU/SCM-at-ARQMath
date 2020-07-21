@@ -194,7 +194,7 @@ def read_tsv_file(filename, total_number_of_documents, phraser=None, **kwargs):
                         read_tsv_file_worker,
                         tqdm(
                             rows,
-                            desc='Reading documents from {}'.format(filename),
+                            desc='Reading formulae from {}'.format(filename),
                             total=total_number_of_documents,
                         ),
 		        POOL_CHUNKSIZE,
@@ -202,16 +202,17 @@ def read_tsv_file(filename, total_number_of_documents, phraser=None, **kwargs):
                 number_of_documents += 1
                 if result is not None:
                     assert number_of_documents <= total_number_of_documents, \
-                        'Expected {} documents, but just read document number {}'.format(
+                        'Expected {} formulae, but just read formula number {} ({})'.format(
                             total_number_of_documents,
                             number_of_documents,
+                            result[0],
                         )
                     document_name, document = result
                     if phraser is not None:
                         document = phraser[document]
                     yield (document_name, document)
     assert number_of_documents == total_number_of_documents, \
-        'Expected {} documents, but read only {}'.format(
+        'Expected {} formulae, but read only {}'.format(
             total_number_of_documents,
             number_of_documents,
         )
@@ -249,9 +250,10 @@ def read_json_file(filename, total_number_of_documents, discard_math=False, conc
                 if result is not None:
                     number_of_documents += 1
                     assert number_of_documents <= total_number_of_documents, \
-                        'Expected {} documents, but just read document number {}'.format(
+                        'Expected {} documents, but just read document number {} ({})'.format(
                             total_number_of_documents,
                             number_of_documents,
+                            result[0],
                         )
                     document_name, document = result
                     if phraser is not None:
