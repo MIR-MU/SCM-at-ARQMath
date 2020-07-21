@@ -6,7 +6,7 @@
 import csv
 import sys
 
-from .configuration import CSV_PARAMETERS, TOPN
+from .configuration import CSV_PARAMETERS
 
 
 def renumber_ranks(input_filename, output_filename, task):
