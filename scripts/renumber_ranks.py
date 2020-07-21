@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+"""Recomputes ranks in an ARQMath task 1 or task 2 SERP."""
+
 import csv
 import sys
 

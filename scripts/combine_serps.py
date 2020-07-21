@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+"""Combines ARQMath task 1 or task 2 SERPs into an ensemble."""
+
 import csv
 import logging
 from statistics import median
