@@ -14,7 +14,7 @@ def parameters_to_string(parameters):
     return '_'.join(
         '='.join((
             str(key).replace('_', '-'),
-            str(value),
+            ('T' if value else 'F') if isinstance(value, bool) else str(value),
         ))
         for key, value
         in sorted(parameters.items())
@@ -267,10 +267,14 @@ FASTTEXT_CONFIGURATIONS = {
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 200}, {}),  # NDCG' 0.7611
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 400}, {}),  # NDCG' 0.7613
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 800}, {}),  # NDCG' 0.7609
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'dominant': False, 'nonzero_limit': 1600}, {}), # NDCG' 0.8104
       
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 50}, {}),   # NDCG' 0.7612
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 100}, {}),  # NDCG' 0.7610
         ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 200}, {}),  # NDCG' 0.7610
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 400}, {}),  # NDCG' 0.7609
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 800}, {}),  # NDCG' 0.7609
+        ('prefix', 'no_problem', {'phrases': 2}, {}, {'symmetric': False, 'dominant': False, 'nonzero_limit': 1600}, {}), # NDCG' 0.7609
     ],
     'task1': [
         # ('prefix', 'no_problem', {'phrases': 2}, {}, {'nonzero_limit': 100}, {}),
