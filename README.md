@@ -36,12 +36,26 @@ Then, you can either:
    results in the [ARQMath-data-preprocessing][]  repository, and then
    executing the `dvc repro` command.
 
-## Bibliography
+## Citing
+### Text
 
-1. NOVOTNÝ, Vít. Implementation Notes for the Soft Cosine Measure. In
-   *Proceedings of the 27th ACM International Conference on Information and
-   Knowledge Management (CIKM '18)*. Torino, Italy: Association for Computing
-   Machinery, 2018. s. 1639-1642, 4 s. ISBN 978-1-4503-6014-2.
-   doi:[10.1145/3269206.3269317][1].
+NOVOTNÝ, Vít, Petr SOJKA, Michal ŠTEFÁNIK and Dávid LUPTÁK. Three is Better
+than One: Ensembling Math Information Retrieval Systems. *CEUR Workshop
+Proceedings*. Thessaloniki, Greece: M. Jeusfeld c/o Redaktion Sun SITE,
+Informatik V, RWTH Aachen., 2020, vol. 2020, No 2696, p. 1-30. ISSN 1613-0073.
 
- [1]: https://doi.org/10.1145/3269206.3269317
+### BibTeX
+``` bib
+@inproceedings{mir:mirmuARQMath2020,
+  title = {{Three is Better than One}},
+  author = {V\'{i}t Novotn\'{y} and Petr Sojka and Michal \v{S}tef\'{a}nik and D\'{a}vid Lupt\'{a}k},
+  booktitle = {CEUR Workshop Proceedings: ARQMath task at CLEF conference},
+  publisher = {CEUR-WS},
+  address = {Thessaloniki, Greece},
+  date = {22--25 September, 2020},
+  year = 2020,
+  volume = 2696,
+  pages = {1--30},
+  url = {http://ceur-ws.org/Vol-2696/paper_235.pdf},
+}
+```
